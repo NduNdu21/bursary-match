@@ -1,6 +1,7 @@
 package com.ndumiso.bursarymatch.gui;
 
 import com.ndumiso.bursarymatch.model.Offer;
+import com.ndumiso.bursarymatch.service.EligibilityService;
 import com.ndumiso.bursarymatch.service.OfferService;
 import com.ndumiso.bursarymatch.service.ProfileService;
 
@@ -18,10 +19,10 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 
 /**
- * Main application shell. Tabs shown depend on whether the logged-in
- * user is a Student or a Provider, per the Phase 2 design doc plus the
- * "My Offers" addition for providers (Phase 1 required provider offer
- * management, which the Phase 2 GUI spec never actually gave them a tab for).
+ * Main application shell. Tabs shown depend on whether the logged-in user is a
+ * Student or a Provider, per the Phase 2 design doc plus the "My Offers"
+ * addition for providers (Phase 1 required provider offer management, which the
+ * Phase 2 GUI spec never actually gave them a tab for).
  */
 public class MainScreenGUI extends JFrame {
 
@@ -31,6 +32,7 @@ public class MainScreenGUI extends JFrame {
 
     private final ProfileService profileService = new ProfileService();
     private final OfferService offerService = new OfferService();
+    private final EligibilityService eligibilityService = new EligibilityService();
 
     public MainScreenGUI(String userId, String userType, String displayName) {
         this.userId = userId;
@@ -50,6 +52,10 @@ public class MainScreenGUI extends JFrame {
 
         tabs.addTab("Home", buildHomeTab());
 
+        if ("STUDENT".equals(userType)) {
+            tabs.addTab("For You", buildForYouTab());
+        }
+
         if ("PROVIDER".equals(userType)) {
             tabs.addTab("My Offers", buildMyOffersTab());
         }
@@ -62,7 +68,6 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- Home ----------
-
     private JPanel buildHomeTab() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -76,8 +81,10 @@ public class MainScreenGUI extends JFrame {
                 + "Bursary Match System helps South African students find bursaries and "
                 + "scholarships that match their academic results, and helps bursary "
                 + "providers reach the students who qualify for their offers.\n\n"
-                + "Use the Search tab to browse bursary offers, or the Profile tab to "
-                + "keep your details and academic results up to date.");
+                + ("STUDENT".equals(userType)
+                ? "Check the For You tab for offers ranked to your results, or "
+                + "Search to browse everything available."
+                : "Use the My Offers tab to post and manage your bursary listings."));
         infoArea.setLineWrap(true);
         infoArea.setWrapStyleWord(true);
         infoArea.setEditable(false);
@@ -87,8 +94,63 @@ public class MainScreenGUI extends JFrame {
         return panel;
     }
 
-    // ---------- Search (placeholder) ----------
+    // ---------- For You (student only) ----------
+    private JPanel buildForYouTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
+        JLabel headerLabel = new JLabel("Offers you qualify for, ranked by fit", SwingConstants.LEFT);
+        headerLabel.setFont(new Font("Arial", Font.BOLD, 14));
+        panel.add(headerLabel, BorderLayout.NORTH);
+
+        DefaultTableModel tableModel = new DefaultTableModel(
+                new Object[]{"Offer", "Faculty", "Deadline", "Margin", "Most Eligible"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable table = new JTable(tableModel);
+        JScrollPane tableScroll = new JScrollPane(table);
+
+        JLabel emptyStateLabel = new JLabel(" ", SwingConstants.CENTER);
+        emptyStateLabel.setFont(new Font("Arial", Font.ITALIC, 13));
+
+        try {
+            ProfileService.StudentMarksData marks = profileService.getStudentMarks(userId);
+
+            if (marks == null) {
+                emptyStateLabel.setText(
+                        "You haven't entered your academic results yet - go to Profile > Academics first.");
+                panel.add(emptyStateLabel, BorderLayout.CENTER);
+            } else {
+                List<EligibilityService.RankedOffer> ranked = eligibilityService.getEligibleOffers(marks);
+
+                if (ranked.isEmpty()) {
+                    emptyStateLabel.setText("No offers currently match your results.");
+                    panel.add(emptyStateLabel, BorderLayout.CENTER);
+                } else {
+                    for (EligibilityService.RankedOffer r : ranked) {
+                        tableModel.addRow(new Object[]{
+                            r.offer.getOfferName(),
+                            r.offer.getFaculty(),
+                            r.offer.getDeadline(),
+                            (r.averageMargin >= 0 ? "+" : "") + r.averageMargin,
+                            r.mostEligible ? "Yes" : ""
+                        });
+                    }
+                    panel.add(tableScroll, BorderLayout.CENTER);
+                }
+            }
+        } catch (SQLException e) {
+            emptyStateLabel.setText("Could not load matches: " + e.getMessage());
+            panel.add(emptyStateLabel, BorderLayout.CENTER);
+        }
+
+        return panel;
+    }
+
+    // ---------- Search (placeholder) ----------
     private JPanel buildSearchPlaceholderTab() {
         JPanel panel = new JPanel(new BorderLayout());
         JLabel label = new JLabel(
@@ -100,7 +162,6 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- Profile ----------
-
     private JPanel buildProfileTab() {
         JTabbedPane profileTabs = new JTabbedPane();
         profileTabs.addTab("Personal Info", buildPersonalInfoPanel());
@@ -365,7 +426,6 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- My Offers (provider only) ----------
-
     private JPanel buildMyOffersTab() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -389,8 +449,8 @@ public class MainScreenGUI extends JFrame {
                 List<Offer> offers = offerService.getOffersByProvider(userId);
                 for (Offer o : offers) {
                     tableModel.addRow(new Object[]{
-                            o.getOfferName(), o.getFaculty(), o.getApsRequired(),
-                            o.getAvgRequired(), o.getDeadline(), o.getNumBursariesLeft()
+                        o.getOfferName(), o.getFaculty(), o.getApsRequired(),
+                        o.getAvgRequired(), o.getDeadline(), o.getNumBursariesLeft()
                     });
                 }
             } catch (SQLException e) {
@@ -435,8 +495,11 @@ public class MainScreenGUI extends JFrame {
         JTextField hlField = new JTextField(5);
         JTextField falField = new JTextField(5);
         JTextField mathField = new JTextField(5);
+        JTextField sub4SubjectField = new JTextField(10);
         JTextField sub4Field = new JTextField(5);
+        JTextField sub5SubjectField = new JTextField(10);
         JTextField sub5Field = new JTextField(5);
+        JTextField sub6SubjectField = new JTextField(10);
         JTextField sub6Field = new JTextField(5);
         JTextField facultyField = new JTextField(15);
         JTextField deadlineField = new JTextField(15);
@@ -454,9 +517,9 @@ public class MainScreenGUI extends JFrame {
         row = addRow(panel, c, row, "Home Lang Required:", hlField);
         row = addRow(panel, c, row, "FAL Required:", falField);
         row = addRow(panel, c, row, "Maths Required:", mathField);
-        row = addRow(panel, c, row, "Elective 4 Required:", sub4Field);
-        row = addRow(panel, c, row, "Elective 5 Required:", sub5Field);
-        row = addRow(panel, c, row, "Elective 6 Required:", sub6Field);
+        row = addElectiveRow(panel, c, row, "Elective 4:", sub4SubjectField, sub4Field);
+        row = addElectiveRow(panel, c, row, "Elective 5:", sub5SubjectField, sub5Field);
+        row = addElectiveRow(panel, c, row, "Elective 6:", sub6SubjectField, sub6Field);
         row = addRow(panel, c, row, "Faculty:", facultyField);
         row = addRow(panel, c, row, "Deadline (YYYY-MM-DD):", deadlineField);
         row = addRow(panel, c, row, "Number of Bursaries:", slotsField);
@@ -486,9 +549,9 @@ public class MainScreenGUI extends JFrame {
                             parseIntOrZero(hlField.getText()),
                             parseIntOrZero(falField.getText()),
                             parseIntOrZero(mathField.getText()),
-                            parseIntOrZero(sub4Field.getText()),
-                            parseIntOrZero(sub5Field.getText()),
-                            parseIntOrZero(sub6Field.getText()),
+                            parseIntOrZero(sub4Field.getText()), sub4SubjectField.getText().trim(),
+                            parseIntOrZero(sub5Field.getText()), sub5SubjectField.getText().trim(),
+                            parseIntOrZero(sub6Field.getText()), sub6SubjectField.getText().trim(),
                             facultyField.getText().trim(),
                             deadline,
                             parseIntOrZero(slotsField.getText()),
@@ -519,7 +582,6 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- Help ----------
-
     private JPanel buildHelpTab() {
         JPanel panel = new JPanel(new BorderLayout(10, 10));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -568,7 +630,6 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- shared helpers ----------
-
     private int addRow(JPanel panel, GridBagConstraints c, int row, String labelText, JComponent field) {
         c.gridwidth = 1;
         c.gridx = 0;
@@ -577,6 +638,24 @@ public class MainScreenGUI extends JFrame {
 
         c.gridx = 1;
         panel.add(field, c);
+
+        return row + 1;
+    }
+
+    private int addElectiveRow(JPanel panel, GridBagConstraints c, int row, String label,
+            JTextField subjectField, JTextField markField) {
+        c.gridwidth = 1;
+        c.gridx = 0;
+        c.gridy = row;
+        panel.add(new JLabel(label), c);
+
+        JPanel pair = new JPanel(new FlowLayout(FlowLayout.LEFT, 4, 0));
+        pair.add(new JLabel("Subject:"));
+        pair.add(subjectField);
+        pair.add(new JLabel("Min mark:"));
+        pair.add(markField);
+        c.gridx = 1;
+        panel.add(pair, c);
 
         return row + 1;
     }
