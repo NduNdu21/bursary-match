@@ -1,16 +1,29 @@
 package com.ndumiso.bursarymatch.gui;
 
-import com.ndumiso.bursarymatch.auth.AuthService;
-import com.ndumiso.bursarymatch.auth.LoginResult;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Font;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 
+import javax.swing.ButtonGroup;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JRadioButton;
+import javax.swing.JTextField;
+import javax.swing.SwingConstants;
+
+import com.ndumiso.bursarymatch.auth.AuthService;
+import com.ndumiso.bursarymatch.auth.LoginResult;
+
 /**
- * Login screen: lets the user pick Student or Provider, enter credentials,
- * and either logs them in or reports why it failed.
+ * Login screen: lets the user pick Student or Provider, enter credentials, and
+ * either logs them in or reports why it failed.
  *
  * Matches "LogInGUI" from the Phase 2 design document.
  */
@@ -111,11 +124,8 @@ public class LogInGUI extends JFrame {
         signUpButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // SignUpOptionGUI hasn't been rebuilt yet
-                JOptionPane.showMessageDialog(LogInGUI.this,
-                        "Sign up screen is coming soon.",
-                        "Not yet available",
-                        JOptionPane.INFORMATION_MESSAGE);
+                new SignUpOptionGUI().setVisible(true);
+                dispose();
             }
         });
         c.gridy = 6;
