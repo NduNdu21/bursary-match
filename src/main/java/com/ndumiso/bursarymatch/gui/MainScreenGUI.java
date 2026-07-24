@@ -16,6 +16,7 @@ import java.io.IOException;
 import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -60,7 +61,7 @@ public class MainScreenGUI extends JFrame {
             tabs.addTab("My Offers", buildMyOffersTab());
         }
 
-        tabs.addTab("Search", buildSearchPlaceholderTab());
+        tabs.addTab("Search", buildSearchTab());
         tabs.addTab("Profile", buildProfileTab());
         tabs.addTab("Help", buildHelpTab());
 
@@ -151,14 +152,143 @@ public class MainScreenGUI extends JFrame {
     }
 
     // ---------- Search (placeholder) ----------
-    private JPanel buildSearchPlaceholderTab() {
-        JPanel panel = new JPanel(new BorderLayout());
-        JLabel label = new JLabel(
-                "Search is coming soon - eligibility ranking is still being built.",
-                SwingConstants.CENTER);
-        label.setFont(new Font("Arial", Font.ITALIC, 14));
-        panel.add(label, BorderLayout.CENTER);
+    private JPanel buildSearchTab() {
+        JPanel panel = new JPanel(new BorderLayout(10, 10));
+        panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        // ---- top controls: search bar + faculty filter + deadline filter ----
+        JPanel controls = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(4, 4, 4, 4);
+        c.fill = GridBagConstraints.HORIZONTAL;
+
+        JTextField searchField = new JTextField(20);
+        JComboBox<String> facultyFilter = new JComboBox<>();
+        facultyFilter.addItem("All Faculties");
+        JComboBox<String> deadlineFilter = new JComboBox<>(new String[]{
+            "All Deadlines", "Open Only", "Missing (Passed)"
+        });
+        JButton searchButton = new JButton("Search");
+
+        c.gridx = 0;
+        c.gridy = 0;
+        controls.add(new JLabel("Search:"), c);
+        c.gridx = 1;
+        c.weightx = 1;
+        controls.add(searchField, c);
+        c.gridx = 2;
+        c.weightx = 0;
+        controls.add(searchButton, c);
+        c.gridx = 3;
+        controls.add(new JLabel("Faculty:"), c);
+        c.gridx = 4;
+        c.weightx = 1;
+        controls.add(facultyFilter, c);
+        c.gridx = 5;
+        c.weightx = 0;
+        controls.add(new JLabel("Deadline:"), c);
+        c.gridx = 6;
+        c.weightx = 1;
+        controls.add(deadlineFilter, c);
+
+        panel.add(controls, BorderLayout.NORTH);
+
+        // ---- results table ----
+        DefaultTableModel tableModel = new DefaultTableModel(
+                new Object[]{"Offer", "Faculty", "Deadline", "APS Req", "Avg Req", "Slots Left"}, 0) {
+            @Override
+            public boolean isCellEditable(int row, int column) {
+                return false;
+            }
+        };
+        JTable resultsTable = new JTable(tableModel);
+        panel.add(new JScrollPane(resultsTable), BorderLayout.CENTER);
+
+        JLabel statusLabel = new JLabel(" ");
+        statusLabel.setForeground(Color.RED);
+        panel.add(statusLabel, BorderLayout.SOUTH);
+
+        // ---- load all offers once, populate faculty dropdown, show full list ----
+        List<Offer> allOffers;
+        try {
+            allOffers = offerService.getAllOffers();
+        } catch (SQLException e) {
+            statusLabel.setText("Could not load offers: " + e.getMessage());
+            allOffers = new ArrayList<>();
+        }
+
+        List<String> seenFaculties = new ArrayList<>();
+        for (Offer o : allOffers) {
+            String faculty = o.getFaculty();
+            if (faculty != null && !faculty.isBlank() && !seenFaculties.contains(faculty)) {
+                seenFaculties.add(faculty);
+                facultyFilter.addItem(faculty);
+            }
+        }
+
+        List<Offer> finalAllOffers = allOffers;
+        populateResultsTable(tableModel, finalAllOffers);
+
+        // ---- search action ----
+        ActionListener runSearch = new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String term = searchField.getText().trim().toLowerCase();
+                String selectedFaculty = (String) facultyFilter.getSelectedItem();
+                String selectedDeadline = (String) deadlineFilter.getSelectedItem();
+
+                List<Offer> filtered = new ArrayList<>();
+                for (Offer o : finalAllOffers) {
+                    if (!matchesSearchTerm(o, term)) {
+                        continue;
+                    }
+                    if (selectedFaculty != null && !"All Faculties".equals(selectedFaculty)
+                            && !selectedFaculty.equals(o.getFaculty())) {
+                        continue;
+                    }
+                    if ("Open Only".equals(selectedDeadline) && o.daysUntilDeadline() < 0) {
+                        continue;
+                    }
+                    if ("Missing (Passed)".equals(selectedDeadline) && o.daysUntilDeadline() >= 0) {
+                        continue;
+                    }
+                    filtered.add(o);
+                }
+
+                populateResultsTable(tableModel, filtered);
+                statusLabel.setForeground(Color.DARK_GRAY);
+                statusLabel.setText(filtered.size() + " offer(s) found.");
+            }
+        };
+
+        searchButton.addActionListener(runSearch);
+        facultyFilter.addActionListener(runSearch);
+        deadlineFilter.addActionListener(runSearch);
+
         return panel;
+    }
+
+    /**
+     * Matches the Phase 2 search spec: compares the search term against the
+     * OfferName and AdditionalInfo fields. Empty term matches everything.
+     */
+    private boolean matchesSearchTerm(Offer offer, String term) {
+        if (term.isEmpty()) {
+            return true;
+        }
+        String name = offer.getOfferName() != null ? offer.getOfferName().toLowerCase() : "";
+        String info = offer.getAddInfo() != null ? offer.getAddInfo().toLowerCase() : "";
+        return name.contains(term) || info.contains(term);
+    }
+
+    private void populateResultsTable(DefaultTableModel tableModel, List<Offer> offers) {
+        tableModel.setRowCount(0);
+        for (Offer o : offers) {
+            tableModel.addRow(new Object[]{
+                o.getOfferName(), o.getFaculty(), o.getDeadline(),
+                o.getApsRequired(), o.getAvgRequired(), o.getNumBursariesLeft()
+            });
+        }
     }
 
     // ---------- Profile ----------
