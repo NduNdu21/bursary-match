@@ -17,9 +17,13 @@ public class Offer {
     private int hlRequired;
     private int falRequired;
     private int mathRequired;
+
     private int sub4Required;
+    private String sub4Subject; // null/blank = any elective accepted
     private int sub5Required;
+    private String sub5Subject;
     private int sub6Required;
+    private String sub6Subject;
 
     private String faculty;
     private LocalDate deadline;
@@ -28,7 +32,10 @@ public class Offer {
 
     public Offer(int offerId, String offerName, String addInfo,
                  int apsRequired, int avgRequired, int hlRequired, int falRequired,
-                 int mathRequired, int sub4Required, int sub5Required, int sub6Required,
+                 int mathRequired,
+                 int sub4Required, String sub4Subject,
+                 int sub5Required, String sub5Subject,
+                 int sub6Required, String sub6Subject,
                  String faculty, LocalDate deadline, int numBursariesLeft, String providerId) {
         this.offerId = offerId;
         this.offerName = offerName;
@@ -39,8 +46,11 @@ public class Offer {
         this.falRequired = falRequired;
         this.mathRequired = mathRequired;
         this.sub4Required = sub4Required;
+        this.sub4Subject = sub4Subject;
         this.sub5Required = sub5Required;
+        this.sub5Subject = sub5Subject;
         this.sub6Required = sub6Required;
+        this.sub6Subject = sub6Subject;
         this.faculty = faculty;
         this.deadline = deadline;
         this.numBursariesLeft = numBursariesLeft;
@@ -83,12 +93,24 @@ public class Offer {
         return sub4Required;
     }
 
+    public String getSub4Subject() {
+        return sub4Subject;
+    }
+
     public int getSub5Required() {
         return sub5Required;
     }
 
+    public String getSub5Subject() {
+        return sub5Subject;
+    }
+
     public int getSub6Required() {
         return sub6Required;
+    }
+
+    public String getSub6Subject() {
+        return sub6Subject;
     }
 
     public String getFaculty() {
