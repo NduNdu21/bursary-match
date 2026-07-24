@@ -1,24 +1,20 @@
 package com.ndumiso.bursarymatch;
 
-import com.ndumiso.bursarymatch.db.DataBase;
+import com.ndumiso.bursarymatch.gui.LogInGUI;
+
+import javax.swing.SwingUtilities;
 
 /**
- * Temporary entry point used to confirm the database connection works
- * before the GUI (LogInGUI, MainScreenGUI, etc.) is rebuilt.
+ * Application entry point. Launches the login screen.
  */
 public class Main {
 
     public static void main(String[] args) {
-        System.out.println("Bursary Match System - starting up...");
-
-        try {
-            DataBase db = new DataBase();
-            System.out.println("Database connection successful.");
-            db.close();
-        } catch (Exception e) {
-            System.out.println("Database connection failed: " + e.getMessage());
-        }
-
-        // TODO: replace this with LogInGUI once the Swing screens are rebuilt
+        SwingUtilities.invokeLater(new Runnable() {
+            @Override
+            public void run() {
+                new LogInGUI().setVisible(true);
+            }
+        });
     }
 }
