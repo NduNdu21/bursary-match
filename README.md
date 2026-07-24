@@ -23,7 +23,7 @@ Rebuilding from the original design documents. Currently in place:
 
 ## Tech stack
 
-- Java 17, Maven
+- Java 21, Maven
 - PostgreSQL (recommend a free-tier hosted instance via [Neon](https://neon.tech) or [Supabase](https://supabase.com) so anyone can run this without a local DB install)
 - Swing (GUI, to be rebuilt)
 
