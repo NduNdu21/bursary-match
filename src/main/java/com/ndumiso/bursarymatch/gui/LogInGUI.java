@@ -155,9 +155,8 @@ public class LogInGUI extends JFrame {
         if (result.isSuccess()) {
             statusLabel.setForeground(new Color(0, 128, 0));
             statusLabel.setText("Welcome, " + result.getDisplayName() + "!");
-            // TODO: once MainScreenGUI exists, open it here and dispose this window:
-            // new MainScreenGUI(result.getUserId(), result.getUserType()).setVisible(true);
-            // dispose();
+            new MainScreenGUI(result.getUserId(), result.getUserType(), result.getDisplayName()).setVisible(true);
+            dispose();
         } else {
             statusLabel.setForeground(Color.RED);
             statusLabel.setText(result.getErrorMessage());
