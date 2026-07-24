@@ -302,6 +302,20 @@ public class MainScreenGUI extends JFrame {
 
         JPanel wrapper = new JPanel(new BorderLayout());
         wrapper.add(profileTabs, BorderLayout.CENTER);
+
+        JButton logOutButton = new JButton("Log Out");
+        logOutButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                new LogInGUI().setVisible(true);
+                dispose();
+            }
+        });
+
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottomPanel.add(logOutButton);
+        wrapper.add(bottomPanel, BorderLayout.SOUTH);
+
         return wrapper;
     }
 
